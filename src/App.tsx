@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import './App.css';
 import { getNumbers } from './utils';
-import { Pagination } from './components/Pagination/Pagination'; // Adjust import path as needed (e.g., if Pagination is in a separate file)
+import { Pagination } from './components/Pagination/Pagination';
 
 // Define items once (outside component for static data)
 const allItems = getNumbers(1, 42).map(n => `Item ${n}`);
@@ -35,7 +35,7 @@ export const App: React.FC = () => {
 
       {/* Pagination component handles info and perPageSelector */}
       <Pagination
-        total={allItems.length}
+        totalItems={allItems.length}
         perPage={perPage}
         currentPage={currentPage}
         onPageChange={handlePageChange}

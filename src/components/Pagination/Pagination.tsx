@@ -1,121 +1,157 @@
 import React from 'react';
 
-interface Props {
-  total: number;
+interface PaginationProps {
+  currentPage: number;
+  totalItems: number;
   perPage: number;
-  currentPage?: number;
-  onPageChange?: (page: number) => void;
-  onPerPageChange?: (perPage: number) => void;
+  onPageChange: (page: number) => void;
+  onPerPageChange: (perPage: number) => void;
 }
 
-export const Pagination: React.FC<Props> = ({
-  total,
+export const Pagination: React.FC<PaginationProps> = ({
+  currentPage,
+  totalItems,
   perPage,
-  currentPage = 1,
   onPageChange,
   onPerPageChange,
 }) => {
-  // ✅ Ensure at least 1 page exists
-  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const totalPages = Math.ceil(totalItems / perPage);
+  const isFirstPage = currentPage === 1;
+  const isLastPage = currentPage === totalPages;
 
-  // ✅ Handle invalid currentPage gracefully
-  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
-
-  const isFirstPage = safeCurrentPage <= 1;
-  const isLastPage = safeCurrentPage >= totalPages;
-
-  // ✅ Fix start/end items when total = 0
-  const startItem = total === 0 ? 0 : (safeCurrentPage - 1) * perPage + 1;
-  const endItem = Math.min(safeCurrentPage * perPage, total);
-
-  const handlePageClick = (page: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    if (page !== safeCurrentPage) {
-      onPageChange?.(page);
-    }
-  };
-
-  const handlePrevClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!isFirstPage) {
-      onPageChange?.(safeCurrentPage - 1);
-    }
-  };
-
-  const handleNextClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!isLastPage) {
-      onPageChange?.(safeCurrentPage + 1);
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      onPageChange(page);
     }
   };
 
   const handlePerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newPerPage = Number(e.target.value);
-    // ✅ Only notify parent; don’t force reset page here
-
-    onPerPageChange?.(newPerPage);
+    onPerPageChange(Number(e.target.value));
+    onPageChange(1); // Reset to first page when changing per-page
   };
 
+  const renderPageButtons = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      pages.push(
+        <button
+          key={1}
+          type="button"
+          className="button pagination-button"
+          onClick={() => handlePageChange(1)}
+          disabled={isFirstPage}
+          data-cy="page-1"
+        >
+          1
+        </button>,
+      );
+      if (startPage > 2) {
+        pages.push(
+          <span key="ellipsis-start" className="pagination-ellipsis">
+            ...
+          </span>,
+        );
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          type="button"
+          className={`button pagination-button ${i === currentPage ? 'is-primary' : ''}`}
+          onClick={() => handlePageChange(i)}
+          disabled={i === currentPage}
+          data-cy={`page-${i}`}
+        >
+          {i}
+        </button>,
+      );
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pages.push(
+          <span key="ellipsis-end" className="pagination-ellipsis">
+            ...
+          </span>,
+        );
+      }
+
+      pages.push(
+        <button
+          key={totalPages}
+          type="button"
+          className="button pagination-button"
+          onClick={() => handlePageChange(totalPages)}
+          disabled={isLastPage}
+          data-cy={`page-${totalPages}`}
+        >
+          {totalPages}
+        </button>,
+      );
+    }
+
+    return pages;
+  };
+
+  if (totalPages <= 1) {
+    return null;
+  }
+
   return (
-    <>
-      <div data-cy="info">
-        Page {safeCurrentPage} (items {startItem} - {endItem} of {total})
-      </div>
-
-      <select
-        data-cy="perPageSelector"
-        value={perPage}
-        onChange={handlePerPageChange}
+    <nav
+      className="pagination is-centered"
+      role="navigation"
+      aria-label="pagination"
+    >
+      <button
+        type="button"
+        className="button pagination-previous"
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={isFirstPage}
+        data-cy="previous-page"
       >
-        <option value={3}>3</option>
-        <option value={5}>5</option>
-        <option value={10}>10</option>
-        <option value={20}>20</option>
-      </select>
-
-      <ul className="pagination">
-        <li className={`page-item ${isFirstPage ? 'disabled' : ''}`}>
-          <a
-            data-cy="prevLink"
-            className="page-link"
-            href="#"
-            aria-disabled={isFirstPage ? 'true' : undefined}
-            onClick={handlePrevClick}
+        Previous
+      </button>
+      <button
+        type="button"
+        className="button pagination-next"
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={isLastPage}
+        data-cy="next-page"
+      >
+        Next
+      </button>
+      <ul className="pagination-list">{renderPageButtons()}</ul>
+      <div className="pagination-per-page">
+        <label htmlFor="perPageSelector" className="label">
+          Items per page:
+        </label>
+        <div className="select">
+          <select
+            id="perPageSelector"
+            value={perPage}
+            onChange={handlePerPageChange}
+            data-cy="perPageSelector"
           >
-            «
-          </a>
-        </li>
-
-        {Array.from({ length: totalPages }, (_, i) => {
-          const page = i + 1;
-          const isActive = page === safeCurrentPage;
-
-          return (
-            <li key={page} className={`page-item ${isActive ? 'active' : ''}`}>
-              <a
-                data-cy="pageLink"
-                className="page-link"
-                href="#"
-                onClick={e => handlePageClick(page, e)}
-              >
-                {page}
-              </a>
-            </li>
-          );
-        })}
-
-        <li className={`page-item ${isLastPage ? 'disabled' : ''}`}>
-          <a
-            data-cy="nextLink"
-            className="page-link"
-            href="#"
-            aria-disabled={isLastPage ? 'true' : undefined}
-            onClick={handleNextClick}
-          >
-            »
-          </a>
-        </li>
-      </ul>
-    </>
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+      </div>
+    </nav>
   );
 };
+
+export default Pagination;
