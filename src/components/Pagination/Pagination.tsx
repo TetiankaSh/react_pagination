@@ -15,15 +15,22 @@ export const Pagination: React.FC<Props> = ({
   onPageChange,
   onPerPageChange,
 }) => {
-  const totalPages = Math.ceil(total / perPage);
-  const isFirstPage = currentPage === 1;
-  const isLastPage = currentPage === totalPages;
-  const startItem = (currentPage - 1) * perPage + 1;
-  const endItem = Math.min(currentPage * perPage, total);
+  // ✅ Ensure at least 1 page exists
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+  // ✅ Handle invalid currentPage gracefully
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const isFirstPage = safeCurrentPage <= 1;
+  const isLastPage = safeCurrentPage >= totalPages;
+
+  // ✅ Fix start/end items when total = 0
+  const startItem = total === 0 ? 0 : (safeCurrentPage - 1) * perPage + 1;
+  const endItem = Math.min(safeCurrentPage * perPage, total);
 
   const handlePageClick = (page: number, e: React.MouseEvent) => {
     e.preventDefault();
-    if (page !== currentPage) {
+    if (page !== safeCurrentPage) {
       onPageChange?.(page);
     }
   };
@@ -31,28 +38,28 @@ export const Pagination: React.FC<Props> = ({
   const handlePrevClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isFirstPage) {
-      onPageChange?.(currentPage - 1);
+      onPageChange?.(safeCurrentPage - 1);
     }
   };
 
   const handleNextClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isLastPage) {
-      onPageChange?.(currentPage + 1);
+      onPageChange?.(safeCurrentPage + 1);
     }
   };
 
   const handlePerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newPerPage = Number(e.target.value);
+    // ✅ Only notify parent; don’t force reset page here
 
     onPerPageChange?.(newPerPage);
-    onPageChange?.(1); // Reset to first page after changing perPage
   };
 
   return (
     <>
       <div data-cy="info">
-        Page {currentPage} (items {startItem} - {endItem} of {total})
+        Page {safeCurrentPage} (items {startItem} - {endItem} of {total})
       </div>
 
       <select
@@ -81,7 +88,7 @@ export const Pagination: React.FC<Props> = ({
 
         {Array.from({ length: totalPages }, (_, i) => {
           const page = i + 1;
-          const isActive = page === currentPage;
+          const isActive = page === safeCurrentPage;
 
           return (
             <li key={page} className={`page-item ${isActive ? 'active' : ''}`}>
